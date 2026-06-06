@@ -1,6 +1,9 @@
 import os
 import streamlit as st
 
+import os
+import streamlit as st
+
 # RAG Files
 from pdf_loader import load_pdf
 from vector_store import create_vector_store
@@ -9,186 +12,209 @@ from vector_store import create_vector_store
 from web_search import search_web
 from rag_tool import retrieve_documents
 
-# Memory (UPDATED)
+# Memory
 from memory import (
-    initialize_memory,
-    add_message,
-    get_history,
-    login_user
+ initialize_memory,
+ add_message,
+ get_history
 )
 
 # Agent
 from router import route_query
 from graph import generate_response
 
+
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
+
 st.set_page_config(
-    page_title="Hackathon AI Agent",
-    page_icon="🤖",
-    layout="wide"
+ page_title="Hackathon AI Agent",
+ page_icon="🤖",
+ layout="wide"
 )
 
 initialize_memory()
 
 st.title("🤖 Intelligent Multi-Mode Conversational AI Agent")
 
-# -----------------------------
-# SIDEBAR - LOGIN SYSTEM
-# -----------------------------
-st.sidebar.header("👤 User Login")
-
-username = st.sidebar.text_input("Enter Username")
-
-if username:
-    login_user(username)
-    st.sidebar.success(f"Logged in as {username}")
-
-# -----------------------------
-# SIDEBAR - PDF UPLOAD
-# -----------------------------
 st.sidebar.header("📄 Upload Document")
 
+# -----------------------------
+# PDF UPLOAD
+# -----------------------------
+
 uploaded_file = st.sidebar.file_uploader(
-    "Upload a PDF",
-    type=["pdf"]
+ "Upload a PDF",
+ type=["pdf"]
 )
 
 pdf_uploaded = False
 
 if uploaded_file:
 
-    try:
-        pdf_uploaded = True
+ try:
 
-        os.makedirs("uploads", exist_ok=True)
+ pdf_uploaded = True
 
-        save_path = os.path.join(
-            "uploads",
-            uploaded_file.name
-        )
+ os.makedirs("uploads", exist_ok=True)
 
-        with open(save_path, "wb") as f:
-            f.write(uploaded_file.read())
+ save_path = os.path.join(
+ "uploads",
+ uploaded_file.name
+ )
 
-        text = load_pdf(save_path)
+ with open(save_path, "wb") as f:
+ f.write(uploaded_file.read())
 
-        create_vector_store(text)
+ text = load_pdf(save_path)
 
-        st.sidebar.success("✅ PDF Indexed Successfully")
+ create_vector_store(text)
 
-    except Exception as e:
-        st.sidebar.error(f"PDF Processing Error:\n{str(e)}")
+ st.sidebar.success(
+ "✅ PDF Indexed Successfully"
+ )
+
+ except Exception as e:
+
+ st.sidebar.error(
+ f"PDF Processing Error:\n{str(e)}"
+ )
 
 # -----------------------------
-# DISPLAY CHAT HISTORY (USER-SPECIFIC)
+# DISPLAY CHAT HISTORY
 # -----------------------------
-if st.session_state.get("user_id"):
 
-    for msg in get_history():
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+for msg in get_history():
+
+ with st.chat_message(msg["role"]):
+ st.markdown(msg["content"])
 
 # -----------------------------
 # USER INPUT
 # -----------------------------
-query = st.chat_input("Ask me anything...")
+
+query = st.chat_input(
+ "Ask me anything..."
+)
 
 if query:
 
-    if not st.session_state.get("user_id"):
-        st.error("⚠️ Please enter a username first in the sidebar.")
-        st.stop()
+ add_message("user", query)
 
-    add_message("user", query)
+ with st.chat_message("user"):
+ st.markdown(query)
 
-    with st.chat_message("user"):
-        st.markdown(query)
+ try:
 
-    try:
+ mode = route_query(
+ query,
+ pdf_uploaded
+ )
 
-        mode = route_query(query, pdf_uploaded)
+ # ==================================
+ # WEB SEARCH MODE
+ # ==================================
 
-        # ==================================
-        # WEB SEARCH MODE
-        # ==================================
-        if mode == "web":
+ if mode == "web":
 
-            try:
-                web_results = search_web(query)
+ try:
 
-                context = "\n".join(
-                    [r.get("body", "") for r in web_results]
-                )
+ web_results = search_web(query)
 
-                prompt = f"""
-Use the search results below to answer.
+ context = "\n".join(
+ [
+ r.get("body", "")
+ for r in web_results
+ ]
+ )
 
-Search Results:
-{context}
+ prompt = f"""
+ Use the search results below to answer.
 
-Question:
-{query}
-"""
+ Search Results:
+ {context}
 
-                answer = generate_response(prompt)
+ Question:
+ {query}
+ """
 
-                answer = "🌐 WEB SEARCH MODE\n\n" + answer
+ answer = generate_response(prompt)
 
-            except Exception:
-                answer = generate_response(query)
-                answer = (
-                    "⚠️ Web Search Failed\n\n"
-                    "Using LLM Knowledge Instead\n\n"
-                    + answer
-                )
+ answer = (
+ "🌐 WEB SEARCH MODE\n\n"
+ + answer
+ )
 
-        # ==================================
-        # PDF RAG MODE
-        # ==================================
-        elif mode == "rag":
+ except Exception:
 
-            try:
-                context = retrieve_documents(query)
+ answer = generate_response(query)
 
-                prompt = f"""
-Answer ONLY using the PDF context.
+ answer = (
+ "⚠️ Web Search Failed\n\n"
+ "Using LLM Knowledge Instead\n\n"
+ + answer
+ )
 
-Context:
-{context}
+ # ==================================
+ # PDF RAG MODE
+ # ==================================
 
-Question:
-{query}
-"""
+ elif mode == "rag":
 
-                answer = generate_response(prompt)
+ try:
 
-                answer = "📄 PDF RAG MODE\n\n" + answer
+ context = retrieve_documents(query)
 
-            except Exception:
-                answer = (
-                    "❌ Could not retrieve information "
-                    "from the uploaded PDF."
-                )
+ prompt = f"""
+ Answer ONLY using the PDF context.
 
-        # ==================================
-        # LLM MODE
-        # ==================================
-        else:
+ Context:
+ {context}
 
-            answer = generate_response(query)
-            answer = "🧠 LLM MODE\n\n" + answer
+ Question:
+ {query}
+ """
 
-    except Exception as e:
+ answer = generate_response(prompt)
 
-        answer = f"""
+ answer = (
+ "📄 PDF RAG MODE\n\n"
+ + answer
+ )
+
+ except Exception:
+
+ answer = (
+ "❌ Could not retrieve information "
+ "from the uploaded PDF."
+ )
+
+ # ==================================
+ # LLM MODE
+ # ==================================
+
+ else:
+
+ answer = generate_response(query)
+
+ answer = (
+ "🧠 LLM MODE\n\n"
+ + answer
+ )
+
+ except Exception as e:
+
+ answer = f"""
 ❌ SYSTEM ERROR
 
 {str(e)}
 """
 
-    add_message("assistant", answer)
+ add_message(
+ "assistant",
+ answer
+ )
 
-    with st.chat_message("assistant"):
-        st.markdown(answer)
+ with st.chat_message("assistant"):
+ st.markdown(answer)
