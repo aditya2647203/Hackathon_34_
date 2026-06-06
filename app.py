@@ -1,20 +1,27 @@
 import os
 import streamlit as st
 
-from rag.pdf_loader import load_pdf
-from rag.vector_store import create_vector_store
+import os
+import streamlit as st
 
-from tools.web_search import search_web
-from tools.rag_tool import retrieve_documents
+# RAG Files
+from pdf_loader import load_pdf
+from vector_store import create_vector_store
 
-from memory.memory import (
+# Tools
+from web_search import search_web
+from rag_tool import retrieve_documents
+
+# Memory
+from memory import (
     initialize_memory,
     add_message,
     get_history
 )
 
-from agent.router import route_query
-from agent.graph import generate_response
+# Agent
+from router import route_query
+from graph import generate_response
 
 
 # -----------------------------
