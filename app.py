@@ -111,47 +111,93 @@ if query:
  # ==================================
  # WEB SEARCH MODE
  # ==================================
+try:
 
- if mode == "web":
+    mode = route_query(query, pdf_uploaded)
 
- try:
+    # ==================================
+    # WEB SEARCH MODE
+    # ==================================
+    if mode == "web":
 
- web_results = search_web(query)
+        try:
+            web_results = search_web(query)
 
- context = "\n".join(
- [
- r.get("body", "")
- for r in web_results
- ]
- )
+            context = "\n".join(
+                [r.get("body", "") for r in web_results]
+            )
 
- prompt = f"""
- Use the search results below to answer.
+            prompt = f"""
+Use the search results below to answer.
 
- Search Results:
- {context}
+Search Results:
+{context}
 
- Question:
- {query}
- """
+Question:
+{query}
+"""
 
- answer = generate_response(prompt)
+            answer = generate_response(prompt)
 
- answer = (
- "🌐 WEB SEARCH MODE\n\n"
- + answer
- )
+            answer = "🌐 WEB SEARCH MODE\n\n" + answer
 
- except Exception:
+        except Exception:
 
- answer = generate_response(query)
+            answer = generate_response(query)
 
- answer = (
- "⚠️ Web Search Failed\n\n"
- "Using LLM Knowledge Instead\n\n"
- + answer
- )
+            answer = (
+                "⚠️ Web Search Failed\n\n"
+                "Using LLM Knowledge Instead\n\n"
+                + answer
+            )
 
+
+    # ==================================
+    # PDF RAG MODE
+    # ==================================
+    elif mode == "rag":
+
+        try:
+            context = retrieve_documents(query)
+
+            prompt = f"""
+Answer ONLY using the PDF context.
+
+Context:
+{context}
+
+Question:
+{query}
+"""
+
+            answer = generate_response(prompt)
+
+            answer = "📄 PDF RAG MODE\n\n" + answer
+
+        except Exception:
+
+            answer = (
+                "❌ Could not retrieve information "
+                "from the uploaded PDF."
+            )
+
+
+    # ==================================
+    # LLM MODE
+    # ==================================
+    else:
+
+        answer = generate_response(query)
+        answer = "🧠 LLM MODE\n\n" + answer
+
+
+except Exception as e:
+
+    answer = f"""
+❌ SYSTEM ERROR
+
+{str(e)}
+"""
  # ==================================
  # PDF RAG MODE
  # ==================================
