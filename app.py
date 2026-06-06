@@ -108,21 +108,19 @@ if query:
 
         mode = route_query(query, pdf_uploaded)
 
- # ==================================
- # WEB SEARCH MODE
- # ==================================
-try:
+        # =========================
+        # WEB MODE
+        # =========================
+        if mode == "web":
 
-    mode = route_query(query, pdf_uploaded)
+            try:
+                web_results = search_web(query)
 
-    if mode == "web":
+                context = "\n".join(
+                    [r.get("body", "") for r in web_results]
+                )
 
-        try:
-            web_results = search_web(query)
-
-            context = "\n".join([r.get("body", "") for r in web_results])
-
-            prompt = f"""
+                prompt = f"""
 Use the search results below to answer.
 
 Search Results:
@@ -132,20 +130,23 @@ Question:
 {query}
 """
 
-            answer = generate_response(prompt)
-            answer = "🌐 WEB SEARCH MODE\n\n" + answer
+                answer = generate_response(prompt)
+                answer = "🌐 WEB SEARCH MODE\n\n" + answer
 
-        except Exception:
-            answer = generate_response(query)
-            answer = "⚠️ Web Search Failed\n\n" + answer
+            except Exception:
+                answer = generate_response(query)
+                answer = "⚠️ Web Search Failed\n\n" + answer
 
 
-    elif mode == "rag":
+        # =========================
+        # RAG MODE
+        # =========================
+        elif mode == "rag":
 
-        try:
-            context = retrieve_documents(query)
+            try:
+                context = retrieve_documents(query)
 
-            prompt = f"""
+                prompt = f"""
 Answer ONLY using the PDF context.
 
 Context:
@@ -155,26 +156,35 @@ Question:
 {query}
 """
 
-            answer = generate_response(prompt)
-            answer = "📄 PDF RAG MODE\n\n" + answer
+                answer = generate_response(prompt)
+                answer = "📄 PDF RAG MODE\n\n" + answer
 
-        except Exception:
-            answer = "❌ Could not retrieve information from PDF"
-
-
-    else:
-
-        answer = generate_response(query)
-        answer = "🧠 LLM MODE\n\n" + answer
+            except Exception:
+                answer = "❌ Could not retrieve information from PDF"
 
 
-except Exception as e:
+        # =========================
+        # LLM MODE
+        # =========================
+        else:
 
-    answer = f"""
+            answer = generate_response(query)
+            answer = "🧠 LLM MODE\n\n" + answer
+
+
+    except Exception as e:
+
+        answer = f"""
 ❌ SYSTEM ERROR
 
 {str(e)}
 """
+
+
+    add_message("assistant", answer)
+
+    with st.chat_message("assistant"):
+        st.markdown(answer)
 
     # ==================================
     # PDF RAG MODE
