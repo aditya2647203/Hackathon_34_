@@ -1,9 +1,6 @@
 import os
 import streamlit as st
 
-import os
-import streamlit as st
-
 # RAG Files
 from pdf_loader import load_pdf
 from vector_store import create_vector_store
@@ -14,38 +11,32 @@ from rag_tool import retrieve_documents
 
 # Memory
 from memory import (
- initialize_memory,
- add_message,
- get_history
+    initialize_memory,
+    add_message,
+    get_history
 )
 
 # Agent
 from router import route_query
 from graph import generate_response
 
-
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
-
 st.set_page_config(
- page_title="Hackathon AI Agent",
- page_icon="🤖",
- layout="wide"
+    page_title="Hackathon AI Agent",
+    page_icon="🤖",
+    layout="wide"
 )
 
 initialize_memory()
 
 st.title("🤖 Intelligent Multi-Mode Conversational AI Agent")
 
+# -----------------------------
+# SIDEBAR - PDF UPLOAD
+# -----------------------------
 st.sidebar.header("📄 Upload Document")
-
-# -----------------------------
-# PDF UPLOAD
-# -----------------------------
-# -----------------------------
-# PDF UPLOAD
-# -----------------------------
 
 uploaded_file = st.sidebar.file_uploader(
     "Upload a PDF",
@@ -61,10 +52,7 @@ if uploaded_file:
 
         os.makedirs("uploads", exist_ok=True)
 
-        save_path = os.path.join(
-            "uploads",
-            uploaded_file.name
-        )
+        save_path = os.path.join("uploads", uploaded_file.name)
 
         with open(save_path, "wb") as f:
             f.write(uploaded_file.read())
@@ -77,13 +65,10 @@ if uploaded_file:
 
     except Exception as e:
         st.sidebar.error(f"PDF Processing Error:\n{str(e)}")
-# -----------------------------
-# DISPLAY CHAT HISTORY
-# -----------------------------
-# -----------------------------
-# DISPLAY CHAT HISTORY
-# -----------------------------
 
+# -----------------------------
+# DISPLAY CHAT HISTORY
+# -----------------------------
 for msg in get_history():
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -91,10 +76,6 @@ for msg in get_history():
 # -----------------------------
 # USER INPUT
 # -----------------------------
-# -----------------------------
-# USER INPUT
-# -----------------------------
-
 query = st.chat_input("Ask me anything...")
 
 if query:
@@ -108,9 +89,9 @@ if query:
 
         mode = route_query(query, pdf_uploaded)
 
-        # =========================
-        # WEB MODE
-        # =========================
+        # -------------------------
+        # WEB SEARCH MODE
+        # -------------------------
         if mode == "web":
 
             try:
@@ -121,7 +102,7 @@ if query:
                 )
 
                 prompt = f"""
-Use the search results below to answer.
+Use the search results below to answer the question.
 
 Search Results:
 {context}
@@ -137,10 +118,9 @@ Question:
                 answer = generate_response(query)
                 answer = "⚠️ Web Search Failed\n\n" + answer
 
-
-        # =========================
-        # RAG MODE
-        # =========================
+        # -------------------------
+        # RAG MODE (PDF)
+        # -------------------------
         elif mode == "rag":
 
             try:
@@ -162,15 +142,13 @@ Question:
             except Exception:
                 answer = "❌ Could not retrieve information from PDF"
 
-
-        # =========================
+        # -------------------------
         # LLM MODE
-        # =========================
+        # -------------------------
         else:
 
             answer = generate_response(query)
             answer = "🧠 LLM MODE\n\n" + answer
-
 
     except Exception as e:
 
@@ -180,117 +158,7 @@ Question:
 {str(e)}
 """
 
-
     add_message("assistant", answer)
 
     with st.chat_message("assistant"):
         st.markdown(answer)
-
-    # ==================================
-    # PDF RAG MODE
-    # ==================================
-    elif mode == "rag":
-
-        try:
-            context = retrieve_documents(query)
-
-            prompt = f"""
-Answer ONLY using the PDF context.
-
-Context:
-{context}
-
-Question:
-{query}
-"""
-
-            answer = generate_response(prompt)
-
-            answer = "📄 PDF RAG MODE\n\n" + answer
-
-        except Exception:
-
-            answer = (
-                "❌ Could not retrieve information "
-                "from the uploaded PDF."
-            )
-
-
-    # ==================================
-    # LLM MODE
-    # ==================================
-    else:
-
-        answer = generate_response(query)
-        answer = "🧠 LLM MODE\n\n" + answer
-
-
-except Exception as e:
-
-    answer = f"""
-❌ SYSTEM ERROR
-
-{str(e)}
-"""
- # ==================================
- # PDF RAG MODE
- # ==================================
-
- elif mode == "rag":
-
- try:
-
- context = retrieve_documents(query)
-
- prompt = f"""
- Answer ONLY using the PDF context.
-
- Context:
- {context}
-
- Question:
- {query}
- """
-
- answer = generate_response(prompt)
-
- answer = (
- "📄 PDF RAG MODE\n\n"
- + answer
- )
-
- except Exception:
-
- answer = (
- "❌ Could not retrieve information "
- "from the uploaded PDF."
- )
-
- # ==================================
- # LLM MODE
- # ==================================
-
- else:
-
- answer = generate_response(query)
-
- answer = (
- "🧠 LLM MODE\n\n"
- + answer
- )
-
- except Exception as e:
-
- answer = f"""
-❌ SYSTEM ERROR
-
-{str(e)}
-"""
-
- add_message(
- "assistant",
- answer
- )
-
- with st.chat_message("assistant"):
- st.markdown(answer)
